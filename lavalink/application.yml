@@ -3,10 +3,6 @@ server: # REST and WS server
   address: 0.0.0.0
 lavalink:
   server:
-    http:
-      enable-cache: true
-      cache-size: 10000
-      cache-expire-time: 600000
     password: "susano"
     sources:
       youtube: true
