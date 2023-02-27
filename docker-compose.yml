@@ -3,12 +3,24 @@ version: '3'
 services:
   bot:
     build: .
+    container_name: bot
+    restart: unless-stopped
     environment:
       - DOCKER_LAVALINK_HOST=lavalink
     depends_on:
       - lavalink
+    networks:
+      - net
 
   lavalink:
-    build: ./lavalink
-    ports:
-      - "2333:2333"
+    image: fredboat/lavalink:master
+    container_name: lavalink
+    hostname: lavalink
+    restart: unless-stopped
+    networks:
+      - net
+    volumes:
+      - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
+
+networks:
+  net:
