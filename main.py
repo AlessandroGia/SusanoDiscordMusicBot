@@ -36,7 +36,6 @@ class SusanoMusicBot(commands.Bot):
     async def __create_node(self, i):
         if not (host := os.getenv('DOCKER_LAVALINK_HOST')):
              host = '127.0.0.1'
-        logging.info(host)
         for x in range(i):
             self.node: wavelink.Node = await wavelink.NodePool.create_node(
                 bot=self,
@@ -47,7 +46,6 @@ class SusanoMusicBot(commands.Bot):
             if self.node.is_connected():
                 break
             await asyncio.sleep(1)
-        logging.info(self.node)
 
 
 if __name__ == "__main__":

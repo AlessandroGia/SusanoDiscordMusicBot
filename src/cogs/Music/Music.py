@@ -9,6 +9,7 @@ from src.embed.Embed import Embed
 from src.utils.Utils import search_url
 
 import wavelink
+import logging
 from discord.ext import commands
 
 from src.voice.voice_channel.VoiceChannel import VoiceChannel
@@ -16,6 +17,7 @@ from src.voice.voice_channel.VoiceChannel import VoiceChannel
 
 class Music(ext.commands.Cog):
     def __init__(self, bot: commands.Bot):
+        logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
         self.bot: commands.Bot = bot
         self.__embed: Embed = Embed()
         self.__vc: VoiceChannel = bot.vc
@@ -91,6 +93,7 @@ class Music(ext.commands.Cog):
         try:
             await self.__vc.join(interaction)
         except Exception as e:
+            logging.info('----', e)
             print(e)
         await interaction.response.send_message(embed=self.__embed.embed(
             "**Bot entrato in** : _{}_".format(interaction.user.voice.channel)
