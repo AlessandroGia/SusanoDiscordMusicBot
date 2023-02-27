@@ -1,5 +1,3 @@
-import time
-
 
 from discord import Intents, Object, Status, Activity, ActivityType
 from discord.ext import commands
@@ -8,6 +6,7 @@ from dotenv import load_dotenv
 import os
 import asyncio
 import wavelink
+import logging
 
 from src.cogs.Music.event.EventHandler import EventHandler
 from src.voice.voice_channel.VoiceChannel import VoiceChannel
@@ -15,7 +14,7 @@ from src.voice.voice_channel.VoiceChannel import VoiceChannel
 
 class SusanoMusicBot(commands.Bot):
     def __init__(self) -> None:
-
+        logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
         super().__init__(
             command_prefix=commands.when_mentioned_or('!'),
             intents=Intents.all(),

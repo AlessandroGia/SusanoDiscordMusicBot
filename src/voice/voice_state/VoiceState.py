@@ -5,6 +5,9 @@ from discord import Interaction, ext, TextChannel, Message
 import asyncio
 import wavelink
 
+import logging
+
+
 from discord import Embed
 
 from src.cogs.Music.event.EventHandler import EventHandler
@@ -23,6 +26,7 @@ class VoiceState:
     TIMEOUT_WAIT_FOR_A_SONG = (600)
 
     def __init__(self, bot: ext.commands.Bot, del_instance: Callable) -> None:
+        logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.DEBUG)
         self.bot: ext.commands.Bot = bot
         self.__del_instance: Callable = del_instance
         self.__embed: Song = Song()
