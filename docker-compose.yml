@@ -1,9 +1,18 @@
 version: '3'
 
 services:
+  lavalink:
+    image: fredboat/lavalink:master
+    container_name: lavalink-container
+    restart: unless-stopped
+    networks:
+      - net
+    volumes:
+      - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
+
   bot:
     build: .
-    container_name: bot
+    container_name: bot-container
     restart: unless-stopped
     environment:
       - DOCKER_LAVALINK_HOST=lavalink
@@ -11,16 +20,6 @@ services:
       - lavalink
     networks:
       - net
-
-  lavalink:
-    image: fredboat/lavalink:master
-    container_name: lavalink
-    hostname: lavalink
-    restart: unless-stopped
-    networks:
-      - net
-    volumes:
-      - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
 
 networks:
   net:
