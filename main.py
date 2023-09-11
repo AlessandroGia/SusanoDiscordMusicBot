@@ -26,7 +26,7 @@ class SusanoMusicBot(commands.Bot):
 
     async def setup_hook(self) -> None:
         await self.load_extension(f"src.cogs.Music.Music")
-        await self.load_extension(f"src.cogs.Music.WaveLink")
+        await self.load_extension(f"src.cogs.Music.WaveLink_")
 
     async def on_ready(self) -> None:
         await self.tree.sync(guild=Object(id=928785387239915540))
