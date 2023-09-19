@@ -230,14 +230,6 @@ class VoiceState(ext.commands.Cog):
                     print('Errore 2:', e)
                     await self.__clean_up_stuck()
 
-    def __update_progress_bar(self, iteration, total, length=50, fill="█"):
-        percent = ("{:.1f}").format(100 * (iteration / float(total)))
-        arrow = fill * int(length * iteration // total)
-        spaces = " " * (length - len(arrow))
-
-        sys.stdout.write(f"\r[{arrow + spaces}] {percent}% Complete")
-        sys.stdout.flush()
-
     def __embed_in_riproduzione(self) -> Embed:
         return self.__embed.inRiproduzione(
             self.__current_track,
