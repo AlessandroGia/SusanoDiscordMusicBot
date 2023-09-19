@@ -8,6 +8,8 @@ import asyncio
 import wavelink
 import logging
 
+from wavelink.ext import spotify
+
 from src.cogs.Music.event.EventHandler import EventHandler
 from src.voice.voice_channel.VoiceChannel import VoiceChannel
 
@@ -26,28 +28,42 @@ class SusanoMusicBot(commands.Bot):
 
     async def setup_hook(self) -> None:
         await self.load_extension(f"src.cogs.Music.Music")
-        await self.load_extension(f"src.cogs.Music.WaveLink_")
+        await self.load_extension(f"src.cogs.Music.WaveLink")
 
     async def on_ready(self) -> None:
         await self.tree.sync(guild=Object(id=928785387239915540))
-        await self.__create_node(10)
+        node = self.__create_node()
+        sc = self.__attach_spotify()
+        await self.__connect_nodes(node, sc)
         print("{} si e' connesso a discord!".format(self.user))
 
-    async def __create_node(self, i):
+    def __create_node(self) -> wavelink.Node:
         if not (host := os.getenv('DOCKER_LAVALINK_HOST')):
-             host = '127.0.0.1'
-        await asyncio.sleep(5)
-        for x in range(i):
-            self.node: wavelink.Node = await wavelink.NodePool.create_node(
-                bot=self,
-                host=host,
-                port=2333,
-                password='susano'
-            )
-            if self.node.is_connected():
-                break
-            await asyncio.sleep(1)
+            host = '127.0.0.1'
+        return wavelink.Node(
+            uri=f'http://{host}:2333',
+            password='susano',
+        )
 
+    def __attach_spotify(self):
+        if os.getenv('SPOTIFY_CLIENT_ID') and os.getenv('SPOTIFY_CLIENT_SECRET'):
+            return spotify.SpotifyClient(
+                client_id=os.getenv('SPOTIFY_CLIENT_ID'),
+                client_secret=os.getenv('SPOTIFY_CLIENT_SECRET')
+            )
+        return None
+
+    async def __connect_nodes(self, nodes: wavelink.Node, sc) -> None:
+        if isinstance(nodes, wavelink.Node):
+            nodes = [nodes]
+        try:
+            await wavelink.NodePool.connect(
+                client=self,
+                nodes=nodes,
+                spotify=sc
+            )
+        except Exception as e:
+            print("Errore nella connessione al nodo: ", e)
 
 
 if __name__ == "__main__":
