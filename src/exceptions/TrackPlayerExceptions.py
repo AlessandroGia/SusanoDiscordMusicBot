@@ -7,3 +7,7 @@ class TrackNotFoundError(AppCommandError):
 
 class NoCurrentTrackError(AppCommandError):
     pass
+
+
+class InvalidSpotifyURL(AppCommandError):
+    pass

@@ -1,5 +1,7 @@
 from discord.ext.commands import Bot
 from discord import Interaction
+from wavelink.ext import spotify
+
 from src.voice.voice_state.VoiceState import VoiceState
 
 import wavelink
@@ -24,7 +26,7 @@ class VoiceChannel:
         self.__states[interaction.guild.id] = voice
         await voice.join(interaction)
 
-    async def play(self, interaction: Interaction, track: wavelink.YouTubeTrack, force: int) -> None:
+    async def play(self, interaction: Interaction, track: wavelink.YouTubeTrack | spotify.SpotifyTrack, force: int) -> None:
         voice = self.__get_voicestate(interaction)
         await voice.play(interaction, track, force)
 
@@ -32,9 +34,13 @@ class VoiceChannel:
         voice = self.__get_voicestate(interaction)
         await voice.leave()
 
-    async def next_song(self, interaction: Interaction) -> None:
+    async def skip(self, interaction: Interaction) -> None:
         voice = self.__get_voicestate(interaction)
-        await voice.next_song()
+        await voice.skip()
+
+    async def toggle_loop_all(self, interaction: Interaction) -> bool:
+        voice = self.__get_voicestate(interaction)
+        return await voice.toggle_loop_all()
 
     async def toggle_loop(self, interaction: Interaction) -> bool:
         voice = self.__get_voicestate(interaction)

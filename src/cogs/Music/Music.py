@@ -1,7 +1,7 @@
 from discord import Object, Interaction, app_commands, ext
 
 from src.exceptions.Generic import Generic
-from src.exceptions.QueueException import NoTracksInQueueError, OutOfIndexQueue
+from src.exceptions.QueueException import *
 from src.exceptions.TrackPlayerExceptions import *
 from src.exceptions.VoiceChannelExceptions import *
 from src.checks.VoiceChannelChecks import check_voice_channel
@@ -11,7 +11,10 @@ from src.utils.Utils import search_url
 import wavelink
 from discord.ext import commands
 
+from wavelink.ext import spotify
 from src.voice.voice_channel.VoiceChannel import VoiceChannel
+
+import discord
 
 
 class Music(ext.commands.Cog):
@@ -58,7 +61,7 @@ class Music(ext.commands.Cog):
     )
     @check_voice_channel()
     async def skip(self, interaction: Interaction):
-        await self.__vc.next_song(interaction)
+        await self.__vc.skip(interaction)
         await interaction.response.send_message(embed=self.__embed.embed(
             '**Canzone saltata**'
             ),
@@ -68,8 +71,21 @@ class Music(ext.commands.Cog):
     # Command: Loop #
 
     @app_commands.command(
-        name='loop',
+        name='loop_all',
         description='Attiva/disattiva il loop della coda'
+    )
+    @check_voice_channel()
+    async def loop_all(self, interaction: Interaction):
+        loop = await self.__vc.toggle_loop_all(interaction)
+        await interaction.response.send_message(embed=self.__embed.embed(
+            '**Loop della coda attivato**' if loop else '**Loop disattivato**'
+            ),
+            delete_after=3
+        )
+
+    @app_commands.command(
+        name='loop',
+        description='Attiva/disattiva il loop della canzone corrente'
     )
     @check_voice_channel()
     async def loop(self, interaction: Interaction):
@@ -120,23 +136,41 @@ class Music(ext.commands.Cog):
         description='Riproduce una canzone',
     )
     @app_commands.describe(
-        song='Url o Nome della canzone da cercare',
-        force='Forza la riproduzione della canzone'
+        search='Url o Nome della canzone da cercare',
+        force='Forza la riproduzione della canzone',
+        source='Piattaforma in cui cercare la canzone'
     )
     @app_commands.choices(
+        source=[
+            app_commands.Choice(name='Youtube', value='youtube'),
+            app_commands.Choice(name='Spotify', value='spotify')
+        ],
         force=[
             app_commands.Choice(name='Si', value=1),
             app_commands.Choice(name='No', value=0)
         ]
     )
     @check_voice_channel()
-    async def play(self, interaction: Interaction, song: str, force: int = 0):
-        song = search_url(song)
-        try:
-            track = await wavelink.YouTubeTrack.search(query=song, return_first=True)
-            await self.__vc.play(interaction, track, force)
-        except Exception as e:
-            raise TrackNotFoundError
+    async def play(self, interaction: Interaction, search: str, force: int = 0, source: str = 'youtube'):
+        if source == 'youtube':
+            search = search_url(search)
+            tracks: list[wavelink.YouTubeTrack] = await wavelink.YouTubeTrack.search(search)
+            if not tracks:
+                raise TrackNotFoundError
+            track: wavelink.YouTubeTrack = tracks[0]
+
+        elif source == 'spotify':
+            decoded = spotify.decode_url(search)
+            if not decoded or decoded['type'] is not spotify.SpotifySearchType.track:
+                raise InvalidSpotifyURL  # Only Spotify Track URLs are valid.
+
+            tracks: list[spotify.SpotifyTrack] = await spotify.SpotifyTrack.search(search)
+
+            if not tracks:
+                raise InvalidSpotifyURL  # This does not appear to be a valid Spotify URL.
+            track: spotify.SpotifyTrack = tracks[0]
+            print(track)
+        await self.__vc.play(interaction, track, force)
 
     # Command: Queue #
 
@@ -191,6 +225,7 @@ class Music(ext.commands.Cog):
 
     # Checks #
 
+    @loop_all.error
     @shuffle.error
     @remove.error
     @queue.error
@@ -217,6 +252,15 @@ class Music(ext.commands.Cog):
                                                     ephemeral=True, delete_after=5)
         elif isinstance(error, OutOfIndexQueue):
             await interaction.response.send_message(embed=self.__embed.error('Selezione errata'),
+                                                    ephemeral=True, delete_after=5)
+        elif isinstance(error, AlreadyLoop):
+            await interaction.response.send_message(embed=self.__embed.error('Il loop e\' gia\' attivo'),
+                                                    ephemeral=True, delete_after=5)
+        elif isinstance(error, AlreadyLoopAll):
+            await interaction.response.send_message(embed=self.__embed.error('Il loop della coda e\' gia\' attivo'),
+                                                    ephemeral=True, delete_after=5)
+        elif isinstance(error, InvalidSpotifyURL):
+            await interaction.response.send_message(embed=self.__embed.error('URL di Spotify non valido'),
                                                     ephemeral=True, delete_after=5)
         elif isinstance(error, Generic):
             await interaction.response.send_message(embed=self.__embed.error("Si e' verificato un errore"),
