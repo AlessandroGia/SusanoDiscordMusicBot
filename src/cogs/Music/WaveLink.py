@@ -24,25 +24,8 @@ class WaveLink(ext.commands.Cog):
         print(f'Nodo: <{node}> pronto!')
 
     @commands.Cog.listener()
-<<<<<<< HEAD:src/cogs/Music/WaveLink_.py
-    async def on_wavelink_track_end(self, player: wavelink.Player, track: wavelink.YouTubeTrack, reason) -> None:
-        self.__event_handler.set(player.guild.id)
-
-    @commands.Cog.listener()
-    async def on_wavelink_track_exception(self, player: wavelink.Player, track: wavelink.YouTubeTrack, error) -> None:
-        print("Exception: ", error)
-        await player.stop()
-        self.__event_handler.set(player.guild.id)
-
-    @commands.Cog.listener()
-    async def on_wavelink_track_stuck(self, player: wavelink.Player, track: wavelink.YouTubeTrack, reason) -> None:
-        print("Stuck: ", reason)
-        await player.stop()
-        self.__event_handler.set(player.guild.id)
-=======
     async def on_wavelink_track_end(self, payload: wavelink.TrackEventPayload) -> None:
         self.__event_handler.set(payload.player.guild.id)
->>>>>>> migr:src/cogs/Music/WaveLink.py
 
 
 async def setup(bot: ext.commands.Bot):
