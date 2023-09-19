@@ -1,3 +1,4 @@
 .env
 Pipfile.lock
 lavalink/logs
+__pycache__/

@@ -1,24 +1,30 @@
-version: '3'
+version: '3.8'
 
 services:
   bot:
     build: .
-    container_name: bot-container
+    container_name: bot
     environment:
       - DOCKER_LAVALINK_HOST=lavalink
     depends_on:
       - lavalink
     networks:
-      - net
+      - lavalink-net
 
   lavalink:
-    image: fredboat/lavalink:master
-    container_name: lavalink-container
+    image: fredboat/lavalink:3.7.8
+    container_name: lavalink
     restart: unless-stopped
+    environment:
+      - SERVER_PORT=2333
+      - LAVALINK_SERVER_PASSWORD=susano
+    ports:
+      - "2333:2333"
     networks:
-      - net
+      - lavalink-net
     volumes:
-      - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
+      - ./lavalink/application.yml:/opt/Lavalink/application.yml
 
 networks:
-  net:
+  lavalink-net:
+    name: lavalink-net

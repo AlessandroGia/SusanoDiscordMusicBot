@@ -13,7 +13,6 @@ class WaveLink(ext.commands.Cog):
     def __init__(self, bot):
         self.__bot = bot
         self.__embed = Embed()
-        self.__vc: VoiceChannel = bot.vc
         self.__event_handler: EventHandler = bot.event_handler
 
     @commands.Cog.listener()
@@ -22,9 +21,10 @@ class WaveLink(ext.commands.Cog):
 
     @commands.Cog.listener()
     async def on_wavelink_node_ready(self, node: wavelink.Node) -> None:
-        print(f'Nodo: <{node.identifier}> pronto!')
+        print(f'Nodo: <{node}> pronto!')
 
     @commands.Cog.listener()
+<<<<<<< HEAD:src/cogs/Music/WaveLink_.py
     async def on_wavelink_track_end(self, player: wavelink.Player, track: wavelink.YouTubeTrack, reason) -> None:
         self.__event_handler.set(player.guild.id)
 
@@ -39,6 +39,10 @@ class WaveLink(ext.commands.Cog):
         print("Stuck: ", reason)
         await player.stop()
         self.__event_handler.set(player.guild.id)
+=======
+    async def on_wavelink_track_end(self, payload: wavelink.TrackEventPayload) -> None:
+        self.__event_handler.set(payload.player.guild.id)
+>>>>>>> migr:src/cogs/Music/WaveLink.py
 
 
 async def setup(bot: ext.commands.Bot):

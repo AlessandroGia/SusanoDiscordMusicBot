@@ -7,3 +7,11 @@ class NoTracksInQueueError(AppCommandError):
 
 class OutOfIndexQueue(AppCommandError):
     pass
+
+
+class AlreadyLoop(AppCommandError):
+    pass
+
+
+class AlreadyLoopAll(AppCommandError):
+    pass
