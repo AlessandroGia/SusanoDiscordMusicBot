@@ -10,7 +10,6 @@ import logging
 import sys
 
 from discord.ext import commands
-from wavelink.ext import spotify
 
 from discord import Embed
 
@@ -29,13 +28,14 @@ class VoiceState(ext.commands.Cog):
     TIMEOUT_WAIT_FOR_A_SONG = (600)
 
     def __init__(self, bot: ext.commands.Bot, del_instance: Callable) -> None:
+
         logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.DEBUG)
         self.bot: ext.commands.Bot = bot
         self.__del_instance: Callable = del_instance
         self.__embed: Song = Song()
         self.__lock_queue: Lock = Lock()
 
-        self.voice: wavelink.Player = None
+        self.voice: wavelink.Player | None = None
 
         self.__event_handler: EventHandler = self.bot.event_handler
 
@@ -46,18 +46,16 @@ class VoiceState(ext.commands.Cog):
 
         self.__queue_tracks: wavelink.Queue | None = None
 
-        self.__current_track: wavelink.YouTubeTrack = None
-        self.__current_interaction: Interaction = None
-
-        self.__pause: bool = False
+        self.__current_track: wavelink.Search | None = None
+        self.__current_interaction: Interaction | None = None
 
         self.__loop: bool = False
         self.__loop_all: bool = False
 
         self.__interaction_flag: bool = False
 
-        self.__channel: TextChannel = None
-        self.__channel_embed: Message = None
+        self.__channel: TextChannel | None  = None
+        self.__channel_embed: Message | None  = None
 
     def __reset(self):
         self.voice: wavelink.Player = None
@@ -66,9 +64,8 @@ class VoiceState(ext.commands.Cog):
         self.__timeout_in_pause: TimeoutPause = TimeoutPause(self)
         self.__timeout_members: TimeoutMembers = TimeoutMembers(self)
         self.__queue_tracks: wavelink.Queue | None = None
-        self.__current_track: wavelink.YouTubeTrack = None
+        self.__current_track: wavelink.Search = None
         self.__current_interaction: Interaction = None
-        self.__pause: bool = False
         self.__loop: bool = False
         self.__loop_all: bool = False
         self.__interaction_flag: bool = False
@@ -86,30 +83,21 @@ class VoiceState(ext.commands.Cog):
         self.__audio_player = self.bot.loop.create_task(self.__audio_player_coro())
         await self.__timeout_members.run()
 
-    async def play(self, interaction: Interaction, track: wavelink.YouTubeTrack | spotify.SpotifyTrack, force: bool) -> None:
-        if not force and self.__current_track:
-            print('glass joe')
+    async def play(self, interaction: Interaction, track: wavelink.Search) -> None:
+        if self.__current_track:
             await interaction.response.send_message(
                 embed=self.__embed.inCoda(track, interaction.user)
             )
         else:
             self.__interaction_flag = True
             self.__current_interaction = interaction
-        await self.__add_to_queue(track, force)
+        await self.__add_to_queue(track)
 
-    async def __add_to_queue(self, track: wavelink.YouTubeTrack | spotify.SpotifyTrack, force: bool) -> None:
-        if not force:
-            self.__queue_tracks.put(track)
-        else:
-            await self.__force_track(track)
-
-    async def __force_track(self, track: wavelink.YouTubeTrack):
-        self.__queue_tracks.put_at_front(track)
-        if self.__current_track:
-            await self.voice.stop()
+    async def __add_to_queue(self, track: wavelink.Search) -> None:
+        self.__queue_tracks.put(track)
 
     async def leave(self) -> None:
-        if self.voice.is_playing() or self.voice.is_paused():
+        if self.voice.playing or self.voice.paused:
             await self.voice.stop()
         await self.voice.disconnect()
         await self.__exit()
@@ -117,13 +105,12 @@ class VoiceState(ext.commands.Cog):
     async def remove(self, index: int) -> str:
         if self.__queue_empty():
             raise NoTracksInQueueError
-        with self.__lock_queue:
-            if index < self.__queue_tracks.count:
-                item = self.__queue_tracks[index]
-                del self.__queue_tracks[index]
-                return item.title
-            else:
-                raise OutOfIndexQueue
+        if index < len(self.__queue_tracks):
+            item = self.__queue_tracks[index]
+            self.__queue_tracks.delete(index)
+            return item.title
+        else:
+            raise OutOfIndexQueue
 
     async def shuffle(self) -> None:
         if self.__queue_empty():
@@ -136,7 +123,6 @@ class VoiceState(ext.commands.Cog):
         if self.__loop_all:
             raise AlreadyLoopAll
         self.__loop = not self.__loop
-        self.__queue_tracks.loop = not self.__queue_tracks.loop
         await self.__update_current_song()
         return self.__loop
 
@@ -152,10 +138,10 @@ class VoiceState(ext.commands.Cog):
     async def list_queue(self) -> []:
         if self.__queue_empty():
             raise NoTracksInQueueError
-        return self.__queue_tracks.count, self.__queue_tracks.__iter__()
+        return self.__queue_tracks
 
     def __queue_empty(self) -> bool:
-        return self.__queue_tracks.is_empty
+        return False if self.__queue_tracks else True
 
     async def __exit(self) -> None:
         if self.__audio_player:
@@ -170,27 +156,27 @@ class VoiceState(ext.commands.Cog):
     async def toggle_pause(self) -> bool:
         if not self.__current_track:
             raise NoCurrentTrackError
-        if self.voice.is_paused():
+        if self.voice.paused:
             self.__timeout_in_pause.set()
-            await self.voice.resume()
+            await self.voice.pause(False)
             self.__timeout_in_pause.cancel()
-        elif not self.voice.is_paused() and self.voice.is_playing():
-            await self.voice.pause()
+        elif not self.voice.paused and self.voice.playing:
+            await self.voice.pause(True)
             self.__timeout_in_pause.clear()
             await self.__timeout_in_pause.run()
         await self.__update_current_song()
-        return self.voice.is_paused()
+        return self.voice.paused
 
     async def reset(self):
-        self.__queue_tracks.reset()
+        self.__queue_tracks.clear()
         if self.__loop:
             self.__loop = False
         if self.__loop_all:
             self.__loop_all = False
-        if self.voice.is_playing() or self.voice.is_paused():
+        if self.voice.playing or self.voice.paused:
             await self.voice.stop()
-        if self.__pause:
-            await self.toggle_pause()
+            if self.voice.paused:
+                await self.toggle_pause()
 
     async def skip(self) -> None:
         if not self.__current_track:
@@ -201,34 +187,33 @@ class VoiceState(ext.commands.Cog):
         while True:
             if self.__current_interaction:
                 self.__event_handler.clear(self.__channel.guild.id)
-            self.__current_track = None
-            try:
-                print(' - Aspettando la canzone dalla coda')
-                with self.__lock_queue:
-                    self.__current_track = await asyncio.wait_for(self.__queue_tracks.get_wait(), timeout=self.TIMEOUT_WAIT_FOR_A_SONG)
-                print('Canzone presa dalla coda')
-            except asyncio.TimeoutError:
-                await self.leave()
-                return None
-            else:
+
+            if not self.__loop:
+                self.__current_track = None
                 try:
-                    await self.__send_current_song()
-                    await self.voice.play(self.__current_track)
-                    if self.voice.is_paused():
-                        await self.voice.pause()
-                    print(' - Aspettando la fine della canzone')
-                    await self.__event_handler.wait(self.__channel.guild.id)
+                    print(' - Aspettando la canzone dalla coda')
+                    with self.__lock_queue:
+                        self.__current_track = await asyncio.wait_for(self.__queue_tracks.get_wait(), timeout=self.TIMEOUT_WAIT_FOR_A_SONG)
+                    print('Canzone presa dalla coda')
+                except asyncio.TimeoutError:
+                    await self.leave()
+                    return None
+            try:
+                await self.__send_current_song()
+                await self.voice.play(self.__current_track)
+                if self.voice.paused:
+                    await self.voice.pause(True)
+                print(' - Aspettando la fine della canzone')
+                await self.__event_handler.wait(self.__channel.guild.id)
 
-                    if self.__loop:
-                        self.__queue_tracks.put_at_front(self.__current_track)
-                    if self.__loop_all:
-                        self.__queue_tracks.put(self.__current_track)
+                if self.__loop_all and not self.__loop:
+                    self.__queue_tracks.put(self.__current_track)
 
-                    self.__interaction_flag = False
-                    print('Canzone Finita')
-                except Exception as e:
-                    print('Errore 2:', e)
-                    await self.__clean_up_stuck()
+                self.__interaction_flag = False
+                print('Canzone Finita')
+            except Exception as e:
+                print('Errore 2:', e)
+                await self.__clean_up_stuck()
 
     def __embed_in_riproduzione(self) -> Embed:
         return self.__embed.inRiproduzione(
@@ -236,7 +221,7 @@ class VoiceState(ext.commands.Cog):
             self.__current_interaction.user,
             in_loop=self.__loop,
             in_loop_all=self.__loop_all,
-            in_pause=self.voice.is_paused()
+            in_pause=self.voice.paused
         )
 
     async def __send_current_song(self):
@@ -260,7 +245,7 @@ class VoiceState(ext.commands.Cog):
             )
 
     async def __clean_up_stuck(self):
-        if self.voice.is_playing() or self.voice.is_paused():
+        if self.voice.playing or self.voice.paused:
             await self.voice.stop()
         else:
             self.__event_handler.set(self.__channel.guild.id)

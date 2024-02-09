@@ -8,7 +8,6 @@ import asyncio
 import wavelink
 import logging
 
-from wavelink.ext import spotify
 
 from src.cogs.Music.event.EventHandler import EventHandler
 from src.voice.voice_channel.VoiceChannel import VoiceChannel
@@ -27,14 +26,17 @@ class SusanoMusicBot(commands.Bot):
         self.event_handler: EventHandler = EventHandler()
 
     async def setup_hook(self) -> None:
+        node = self.__create_node()
+        #sc = self.__attach_spotify()
+        sc = None
+        await self.__connect_nodes(node, sc)
         await self.load_extension(f"src.cogs.Music.Music")
         await self.load_extension(f"src.cogs.Music.WaveLink")
 
+
+
     async def on_ready(self) -> None:
         await self.tree.sync(guild=Object(id=928785387239915540))
-        node = self.__create_node()
-        sc = self.__attach_spotify()
-        await self.__connect_nodes(node, sc)
         print("{} si e' connesso a discord!".format(self.user))
 
     def __create_node(self) -> wavelink.Node:
@@ -57,10 +59,9 @@ class SusanoMusicBot(commands.Bot):
         if isinstance(nodes, wavelink.Node):
             nodes = [nodes]
         try:
-            await wavelink.NodePool.connect(
-                client=self,
+            await wavelink.Pool.connect(
                 nodes=nodes,
-                spotify=sc
+                client=self,
             )
         except Exception as e:
             print("Errore nella connessione al nodo: ", e)

@@ -24,7 +24,7 @@ class WaveLink(ext.commands.Cog):
         print(f'Nodo: <{node}> pronto!')
 
     @commands.Cog.listener()
-    async def on_wavelink_track_end(self, payload: wavelink.TrackEventPayload) -> None:
+    async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload) -> None:
         self.__event_handler.set(payload.player.guild.id)
 
 

@@ -11,7 +11,6 @@ from src.utils.Utils import search_url
 import wavelink
 from discord.ext import commands
 
-from wavelink.ext import spotify
 from src.voice.voice_channel.VoiceChannel import VoiceChannel
 
 import discord
@@ -71,7 +70,7 @@ class Music(ext.commands.Cog):
     # Command: Loop #
 
     @app_commands.command(
-        name='loop_all',
+        name='loopall',
         description='Attiva/disattiva il loop della coda'
     )
     @check_voice_channel()
@@ -137,56 +136,32 @@ class Music(ext.commands.Cog):
     )
     @app_commands.describe(
         search='Url o Nome della canzone da cercare',
-        force='Forza la riproduzione della canzone',
-        source='Piattaforma in cui cercare la canzone'
-    )
-    @app_commands.choices(
-        source=[
-            app_commands.Choice(name='Youtube', value='youtube'),
-            app_commands.Choice(name='Spotify', value='spotify')
-        ],
-        force=[
-            app_commands.Choice(name='Si', value=1),
-            app_commands.Choice(name='No', value=0)
-        ]
     )
     @check_voice_channel()
-    async def play(self, interaction: Interaction, search: str, force: int = 0, source: str = 'youtube'):
-        if source == 'youtube':
-            search = search_url(search)
-            tracks: list[wavelink.YouTubeTrack] = await wavelink.YouTubeTrack.search(search)
-            if not tracks:
-                raise TrackNotFoundError
-            track: wavelink.YouTubeTrack = tracks[0]
-
-        elif source == 'spotify':
-            decoded = spotify.decode_url(search)
-            if not decoded or decoded['type'] is not spotify.SpotifySearchType.track:
-                raise InvalidSpotifyURL  # Only Spotify Track URLs are valid.
-
-            tracks: list[spotify.SpotifyTrack] = await spotify.SpotifyTrack.search(search)
-
-            if not tracks:
-                raise InvalidSpotifyURL  # This does not appear to be a valid Spotify URL.
-            track: spotify.SpotifyTrack = tracks[0]
-            print(track)
-        await self.__vc.play(interaction, track, force)
+    async def play(self, interaction: Interaction, search: str):
+        tracks: wavelink.Search = await wavelink.Playable.search(search)
+        if not tracks:
+            raise TrackNotFoundError
+        if not isinstance(tracks, wavelink.Playlist):
+            tracks = tracks[0]
+        await self.__vc.play(interaction, tracks)
 
     # Command: Queue #
 
     @app_commands.command(
         name='queue',
-        description='Mostra le prime 10 canzoni in coda'
+        description='Mostra le prime 15 canzoni in coda'
     )
     @check_voice_channel()
     async def queue(self, interaction: Interaction):
-        num_tracks, queue = await self.__vc.queue(interaction)
-        i, body = 1, []
-        for track in queue:
-            body.append(f'***{i}***. {track}')
-            i += 1
+        queue = await self.__vc.queue(interaction)
+        body = []
+        for i, track in enumerate(queue):
+            body.append(f'***{i + 1}***. {track}')
+            if i == 14:
+                break
         await interaction.response.send_message(embed=self.__embed.embed(
-                '\n'.join(body), f'Canzoni in coda: {num_tracks}'
+                '\n'.join(body), f'Canzoni in coda: {len(queue)}'
             )
         )
 

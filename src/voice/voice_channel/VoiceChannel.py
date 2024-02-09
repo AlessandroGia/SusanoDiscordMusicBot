@@ -1,6 +1,5 @@
 from discord.ext.commands import Bot
 from discord import Interaction
-from wavelink.ext import spotify
 
 from src.voice.voice_state.VoiceState import VoiceState
 
@@ -26,9 +25,9 @@ class VoiceChannel:
         self.__states[interaction.guild.id] = voice
         await voice.join(interaction)
 
-    async def play(self, interaction: Interaction, track: wavelink.YouTubeTrack | spotify.SpotifyTrack, force: int) -> None:
+    async def play(self, interaction: Interaction, track: wavelink.Search) -> None:
         voice = self.__get_voicestate(interaction)
-        await voice.play(interaction, track, force)
+        await voice.play(interaction, track)
 
     async def leave(self, interaction: Interaction) -> None:
         voice = self.__get_voicestate(interaction)
@@ -54,6 +53,7 @@ class VoiceChannel:
         voice = self.__get_voicestate(interaction)
         return await voice.reset()
 
+    #TODO: aggiungere la canzone attualmente in riproduzione e se e' in loop
     async def queue(self, interaction: Interaction) -> []:
         voice = self.__get_voicestate(interaction)
         return await voice.list_queue()
